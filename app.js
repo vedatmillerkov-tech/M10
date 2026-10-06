@@ -2,7 +2,7 @@ const API = "https://m10.vedatmillerkov.workers.dev";
 const WALLET_ADDRESS = "TP4DPLKPQnN4HgHHWeo9n2mCUvJR7uZwPZ";
 const NETWORK = "Tron (TRC20)";
 const TELEGRAM_SUPPORT = "https://t.me/vdtmlrkv";
-const state = { plan: null, price: 0, orderId: null, notified: false, ad: "" };
+const state = { plan: null, price: 0, orderId: null, notified: false, ad: "", adUnlocked: false };
 
 const $ = (selector) => document.querySelector(selector);
 const plans = document.querySelectorAll("[data-plan]");
@@ -39,12 +39,12 @@ function getOrderPayload() {
 
 function fallbackAd(payload) {
   if (payload.language === "العربية") {
-    return `العنوان: ${payload.product_name} بإعلان جاهز يلفت الانتباه\n\n${payload.brief}\n\nنص الإعلان: خلي منتجك يبين بشكل أقوى وأوضح مع إعلان سريع وجاهز للنشر. ${payload.product_name} مصمم ليجذب الانتباه ويحول المشاهد إلى عميل.\n\nالدعوة للإجراء: اطلب الآن`;
+    return `العنوان: ${payload.product_name} بإعلان جاهز يلفت الانتباه\n\n${payload.brief}\n\nنص الإعلان: خلي منتجك يبين بشكل أقوى وأوضح مع إعلان سريع وجاهز للنشر. ${payload.product_name} مصمم ليجذب الانتباه ويحول المشاهد إلى عميل.\n\nالدعوة للإجراء: اطلب الآن\nالهاشتاغات: #${payload.product_name.replace(/\s+/g, "")} #اعلان #تسويق`;
   }
   if (payload.language === "Türkçe") {
-    return `Baslik: ${payload.product_name} ile daha guclu gorunun\n\n${payload.brief}\n\nReklam metni: ${payload.product_name}, markanizi daha dikkat cekici gostermek icin hazirlandi. Hemen deneyin ve farki dakikalar icinde gorun.\n\nCTA: Simdi kesfet`;
+    return `Baslik: ${payload.product_name} ile daha guclu gorunun\n\n${payload.brief}\n\nReklam metni: ${payload.product_name}, markanizi daha dikkat cekici gostermek icin hazirlandi. Hemen deneyin ve farki dakikalar icinde gorun.\n\nCTA: Simdi kesfet\nHashtags: #${payload.product_name.replace(/\s+/g, "")} #AIAds #Marketing`;
   }
-  return `Headline: Make ${payload.product_name} impossible to ignore\n\n${payload.brief}\n\nAd copy: Show your product with a clear, ready-to-post message built to catch attention fast. ${payload.product_name} is positioned as the simple choice for customers who want results without overthinking.\n\nCTA: Order now`;
+  return `Headline: Make ${payload.product_name} impossible to ignore\n\n${payload.brief}\n\nAd copy: Show your product with a clear, ready-to-post message built to catch attention fast. ${payload.product_name} is positioned as the simple choice for customers who want results without overthinking.\n\nCTA: Order now\nHashtags: #${payload.product_name.replace(/\s+/g, "")} #AIAds #Marketing`;
 }
 
 async function createServerOrder() {
@@ -93,18 +93,48 @@ function orderDetailsText(txid = "") {
     `Brief: ${payload.brief}`,
     txid ? `TXID: ${txid}` : "TXID: add after transfer",
     "",
-    "Generated ad:",
-    state.ad
+    state.adUnlocked ? "Generated ad:" : "Generated ad: locked until TXID is entered",
+    state.adUnlocked ? state.ad : ""
   ].join("\n");
 }
 
 function notificationText() {
   if (state.notified) return "Order notification sent to M10 Telegram.";
-  return "Order generated. Telegram automation will activate when the bot token is connected.";
+  return "Order generated. Paste TXID after payment to unlock the AI ad.";
+}
+
+function renderAdSection() {
+  const locked = !state.adUnlocked;
+  return `
+    <div class="generated-ad ${locked ? "locked" : ""}">
+      <p class="eyebrow">AI AD OUTPUT</p>
+      ${locked ? `<p class="note">AI ad is ready. Paste the USDT TXID after payment and tap Unlock AI ad.</p>` : `<pre id="adOutput"></pre><button id="copyAd" type="button">Copy AI ad</button>`}
+    </div>
+  `;
+}
+
+function bindAdActions() {
+  const unlock = $("#unlockAd");
+  if (unlock) {
+    unlock.onclick = () => {
+      const txid = $("#txid").value.trim();
+      if (!txid) {
+        alert("Please paste the TXID after sending USDT.");
+        return;
+      }
+      state.adUnlocked = true;
+      renderManualUsdtCheckout();
+    };
+  }
+  const adOutput = $("#adOutput");
+  if (adOutput) adOutput.textContent = state.ad;
+  const copyAd = $("#copyAd");
+  if (copyAd) copyAd.onclick = () => copyText(state.ad, copyAd);
 }
 
 function renderManualUsdtCheckout() {
   let panel = $("#manualPayment");
+  const txidValue = $("#txid")?.value.trim() || "";
   if (!panel) {
     panel = document.createElement("div");
     panel.id = "manualPayment";
@@ -130,25 +160,21 @@ function renderManualUsdtCheckout() {
     </label>
     <a class="secondary" href="https://t.me/wallet" target="_blank" rel="noopener">Open Telegram Wallet</a>
     <label>Transaction ID / TXID after payment
-      <input id="txid" placeholder="Paste TXID after sending USDT">
+      <input id="txid" placeholder="Paste TXID after sending USDT" value="${txidValue}">
     </label>
-    <button id="copyOrder" type="button" class="primary">Copy payment confirmation</button>
+    <button id="unlockAd" type="button" class="primary">Unlock AI ad after payment</button>
+    <button id="copyOrder" type="button" class="secondary">Copy payment confirmation</button>
     <a id="telegramSupport" class="secondary" href="${TELEGRAM_SUPPORT}" target="_blank" rel="noopener">Send confirmation on Telegram</a>
-    <div class="generated-ad">
-      <p class="eyebrow">AI AD OUTPUT</p>
-      <pre id="adOutput"></pre>
-      <button id="copyAd" type="button">Copy AI ad</button>
-    </div>
-    <p class="note">M10 creates the ad from the product details. Full automatic delivery is the next server step.</p>
+    ${renderAdSection()}
+    <p class="note">The full ad is shown after TXID is entered. Automatic blockchain verification is the next payment upgrade.</p>
   `;
 
-  $("#adOutput").textContent = state.ad;
   $("#copyWallet").onclick = () => copyText(WALLET_ADDRESS, $("#copyWallet"));
   $("#copyOrder").onclick = () => {
     const txid = $("#txid").value.trim();
     copyText(orderDetailsText(txid), $("#copyOrder"));
   };
-  $("#copyAd").onclick = () => copyText(state.ad, $("#copyAd"));
+  bindAdActions();
   panel.scrollIntoView({ behavior: "smooth" });
 }
 
@@ -158,6 +184,7 @@ async function showManualUsdtCheckout(button) {
   const payload = getOrderPayload();
   state.orderId = makeOrderId();
   state.notified = false;
+  state.adUnlocked = false;
   state.ad = fallbackAd(payload);
   try {
     const data = await createServerOrder();
