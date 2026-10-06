@@ -1,1 +1,69 @@
-const H={"content-type":"application/json;charset=UTF-8","access-control-allow-origin":"*","access-control-allow-headers":"content-type","access-control-allow-methods":"GET,POST,OPTIONS"};const PLANS={TRY:.49,START:1.49,BOOST:2.99,PRO:6.99};const out=(d,s=200)=>new Response(JSON.stringify(d),{status:s,headers:H});const q=n=>Number(n).toFixed(6);const unique=base=>q(base+(crypto.getRandomValues(new Uint16Array(1))[0]%900+1)/1e6);export default{async fetch(req,env){if(req.method==="OPTIONS")return new Response(null,{headers:H});const u=new URL(req.url);if(u.pathname==="/health")return out({ok:true,service:"M10 API",version:"0.5",mode:"d1_direct_usdt"});if(u.pathname==="/api/order"&&req.method==="POST"){let b;try{b=await req.json()}catch{return out({error:"invalid_json"},400)}const plan=String(b.plan||"").toUpperCase();if(!PLANS[plan])return out({error:"invalid_plan"},400);const order_id=crypto.randomUUID(),amount=unique(PLANS[plan]),created_at=new Date().toISOString(),expires_at=new Date(Date.now()+30*60*1000).toISOString();try{await env.DB.prepare("INSERT INTO orders (id,plan,amount_usd,payment_method,payment_status,customer_name,customer_email,product_name,language,brief,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(order_id,plan,Number(amount),"USDT_TRC20","PENDING",String(b.customer_name||""),String(b.customer_email||""),String(b.product_name||""),String(b.language||"English"),String(b.brief||""),created_at).run()}catch(e){return out({error:"database_error",message:String(e.message||e)},500)}return out({order_id,status:"PENDING",paid:false,plan,quoted_usd:PLANS[plan].toFixed(2),payment:{asset:"USDT",network:"TRON (TRC20)",amount,receiving_address:env.USDT_RECEIVING_ADDRESS},created_at,expires_at},201)}if(u.pathname.startsWith("/api/payment/")&&req.method==="GET"){const order_id=u.pathname.split("/").pop();const row=await env.DB.prepare("SELECT id,plan,amount_usd,payment_method,payment_status,transaction_id,created_at,paid_at,delivered_at FROM orders WHERE id=?").bind(order_id).first();if(!row)return out({error:"order_not_found"},404);return out({order_id:row.id,status:row.payment_status,paid:row.payment_status==="PAID",verified:row.payment_status==="PAID",order:row})}return out({error:"not_found"},404)}};
+const H={"content-type":"application/json;charset=UTF-8","access-control-allow-origin":"*","access-control-allow-headers":"content-type","access-control-allow-methods":"GET,POST,OPTIONS"};
+const PLANS={TRY:.49,START:1.49,BOOST:2.99,PRO:6.99};
+const WALLET_ADDRESS="TP4DPLKPQnN4HgHHWeo9n2mCUvJR7uZwPZ";
+const NETWORK="Tron (TRC20)";
+
+const out=(d,s=200)=>new Response(JSON.stringify(d),{status:s,headers:H});
+const text=v=>String(v||"").trim();
+const orderId=()=>`M10-${new Date().toISOString().slice(0,10).replaceAll("-","")}-${crypto.randomUUID().slice(0,5).toUpperCase()}`;
+
+function buildTelegramMessage(order){
+  return [
+    "New M10 order",
+    `Order ID: ${order.id}`,
+    `Plan: ${order.plan}`,
+    `Amount: ${order.amount} USDT`,
+    `Network: ${NETWORK}`,
+    `Wallet: ${WALLET_ADDRESS}`,
+    `Customer contact: ${order.contact}`,
+    `Product: ${order.product_name}`,
+    `Language: ${order.language}`,
+    `Brief: ${order.brief}`,
+    "Status: Pending USDT confirmation"
+  ].join("\n");
+}
+
+async function notifyTelegram(env, order){
+  if(!env.TELEGRAM_BOT_TOKEN||!env.TELEGRAM_CHAT_ID){
+    return {sent:false,reason:"telegram_env_missing"};
+  }
+  const url=`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+  const r=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({chat_id:env.TELEGRAM_CHAT_ID,text:buildTelegramMessage(order)})});
+  if(!r.ok){
+    const body=await r.text();
+    return {sent:false,reason:"telegram_api_error",status:r.status,body:body.slice(0,300)};
+  }
+  return {sent:true};
+}
+
+export default{async fetch(req,env){
+  if(req.method==="OPTIONS")return new Response(null,{headers:H});
+  const u=new URL(req.url);
+  if(u.pathname==="/health")return out({ok:true,service:"M10 API",version:"0.6",mode:"telegram_order_notify"});
+
+  if(u.pathname==="/api/order"&&req.method==="POST"){
+    let b;
+    try{b=await req.json()}catch{return out({error:"invalid_json"},400)}
+    const plan=text(b.plan).toUpperCase();
+    if(!PLANS[plan])return out({error:"invalid_plan"},400);
+    const product_name=text(b.product_name);
+    const contact=text(b.contact||b.customer_contact);
+    const brief=text(b.brief);
+    const language=text(b.language)||"English";
+    if(!product_name||!contact||!brief)return out({error:"missing_fields",message:"product_name, contact, and brief are required"},400);
+
+    const order={id:orderId(),plan,amount:PLANS[plan].toFixed(2),product_name,contact,brief,language,created_at:new Date().toISOString()};
+    const telegram=await notifyTelegram(env,order);
+
+    return out({
+      order_id:order.id,
+      status:"PENDING_USDT",
+      telegram,
+      plan,
+      payment:{asset:"USDT",network:NETWORK,amount:order.amount,receiving_address:WALLET_ADDRESS},
+      order
+    },201);
+  }
+
+  return out({error:"not_found"},404);
+}};
