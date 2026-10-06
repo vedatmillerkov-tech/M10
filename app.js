@@ -1,7 +1,8 @@
+const API = "https://m10.vedatmillerkov.workers.dev";
 const WALLET_ADDRESS = "TP4DPLKPQnN4HgHHWeo9n2mCUvJR7uZwPZ";
 const NETWORK = "Tron (TRC20)";
 const TELEGRAM_SUPPORT = "https://t.me/vdtmlrkv";
-const state = { plan: null, price: 0, orderId: null };
+const state = { plan: null, price: 0, orderId: null, notified: false };
 
 const $ = (selector) => document.querySelector(selector);
 const plans = document.querySelectorAll("[data-plan]");
@@ -26,6 +27,28 @@ function makeOrderId() {
   return `M10-${date}-${random}`;
 }
 
+function getOrderPayload() {
+  return {
+    plan: state.plan,
+    product_name: $("#product").value.trim(),
+    contact: $("#contact")?.value.trim() || "",
+    language: $("#language").value,
+    brief: $("#brief").value.trim()
+  };
+}
+
+async function createServerOrder() {
+  const payload = getOrderPayload();
+  const r = await fetch(`${API}/api/order`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.message || data.error || "Order notification failed");
+  return data;
+}
+
 function copyText(text, button) {
   if (!navigator.clipboard) {
     window.prompt("Copy this text:", text);
@@ -39,10 +62,7 @@ function copyText(text, button) {
 }
 
 function orderDetailsText(txid = "") {
-  const product = $("#product").value.trim();
-  const contact = $("#contact")?.value.trim() || "";
-  const language = $("#language").value;
-  const brief = $("#brief").value.trim();
+  const payload = getOrderPayload();
   return [
     "M10 USDT PAYMENT CONFIRMATION",
     `Order ID: ${state.orderId}`,
@@ -50,16 +70,20 @@ function orderDetailsText(txid = "") {
     `Amount: ${state.price.toFixed(2)} USDT`,
     `Network: ${NETWORK}`,
     `Wallet: ${WALLET_ADDRESS}`,
-    `Customer contact: ${contact}`,
-    `Product: ${product}`,
-    `Language: ${language}`,
-    `Brief: ${brief}`,
+    `Customer contact: ${payload.contact}`,
+    `Product: ${payload.product_name}`,
+    `Language: ${payload.language}`,
+    `Brief: ${payload.brief}`,
     txid ? `TXID: ${txid}` : "TXID: add after transfer"
   ].join("\n");
 }
 
-function showManualUsdtCheckout() {
-  state.orderId = makeOrderId();
+function notificationText() {
+  if (state.notified) return "Order notification sent to M10 Telegram.";
+  return "Order notification is prepared. If Telegram automation is not active yet, use the copy button as backup.";
+}
+
+function renderManualUsdtCheckout() {
   let panel = $("#manualPayment");
   if (!panel) {
     panel = document.createElement("div");
@@ -77,6 +101,7 @@ function showManualUsdtCheckout() {
       <span>Network</span><strong>${NETWORK}</strong>
       <span>Amount</span><strong>${state.price.toFixed(2)} USDT</strong>
     </div>
+    <p class="note">${notificationText()}</p>
     <label>Telegram Wallet address
       <div class="copy-row">
         <input id="walletAddress" readonly value="${WALLET_ADDRESS}">
@@ -89,7 +114,7 @@ function showManualUsdtCheckout() {
     </label>
     <button id="copyOrder" type="button" class="primary">Copy payment confirmation</button>
     <a id="telegramSupport" class="secondary" href="${TELEGRAM_SUPPORT}" target="_blank" rel="noopener">Send confirmation on Telegram</a>
-    <p class="note">After sending USDT, paste the TXID, copy the payment confirmation, then tap Telegram Support and send the copied message. The order stays pending until the transfer is checked.</p>
+    <p class="note">The order stays pending until the USDT transfer is checked. Telegram automation is the main path; copy/manual confirmation is backup.</p>
   `;
 
   $("#copyWallet").onclick = () => copyText(WALLET_ADDRESS, $("#copyWallet"));
@@ -98,6 +123,24 @@ function showManualUsdtCheckout() {
     copyText(orderDetailsText(txid), $("#copyOrder"));
   };
   panel.scrollIntoView({ behavior: "smooth" });
+}
+
+async function showManualUsdtCheckout(button) {
+  button.disabled = true;
+  button.textContent = "Creating order...";
+  state.orderId = makeOrderId();
+  state.notified = false;
+  try {
+    const data = await createServerOrder();
+    state.orderId = data.order_id || state.orderId;
+    state.notified = Boolean(data.telegram && data.telegram.sent);
+  } catch (error) {
+    console.warn("M10 order notification fallback:", error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "₮ Pay with USDT";
+    renderManualUsdtCheckout();
+  }
 }
 
 plans.forEach((button) => {
@@ -116,10 +159,8 @@ plans.forEach((button) => {
 
 $("#continue").onclick = () => {
   ensureContactField();
-  const product = $("#product").value.trim();
-  const contact = $("#contact")?.value.trim() || "";
-  const brief = $("#brief").value.trim();
-  if (!product || !contact || !brief) {
+  const payload = getOrderPayload();
+  if (!payload.product_name || !payload.contact || !payload.brief) {
     alert("Please add your product name, contact, and a short description.");
     return;
   }
@@ -133,6 +174,6 @@ document.querySelectorAll(".pay").forEach((button) => {
       alert("Card payment is coming soon. No charge will be made.");
       return;
     }
-    showManualUsdtCheckout();
+    showManualUsdtCheckout(button);
   };
 });
