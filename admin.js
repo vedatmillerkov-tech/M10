@@ -1,0 +1,1 @@
+document.querySelector("#adminLogin").addEventListener("submit",async e=>{e.preventDefault();const msg=document.querySelector("#loginMsg");msg.textContent="Admin backend authentication is not connected yet. No credentials are stored in this public site.";});
