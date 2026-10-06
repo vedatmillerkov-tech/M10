@@ -1,0 +1,7 @@
+name = "m10-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+USDT_NETWORK = "TRON_TRC20"
+USDT_RECEIVING_ADDRESS = "TP4DPLKPQnN4HgHHWeo9n2mCUvJR7uZwPZ"
