@@ -26,16 +26,20 @@ function copyText(text, button) {
 
 function orderDetailsText(txid = "") {
   const product = $("#product").value.trim();
+  const contact = $("#contact").value.trim();
   const language = $("#language").value;
+  const brief = $("#brief").value.trim();
   return [
-    "M10 USDT PAYMENT",
+    "M10 USDT PAYMENT CONFIRMATION",
     `Order ID: ${state.orderId}`,
     `Plan: ${state.plan}`,
     `Amount: ${state.price.toFixed(2)} USDT`,
     `Network: ${NETWORK}`,
     `Wallet: ${WALLET_ADDRESS}`,
+    `Customer contact: ${contact}`,
     `Product: ${product}`,
     `Language: ${language}`,
+    `Brief: ${brief}`,
     txid ? `TXID: ${txid}` : "TXID: add after transfer"
   ].join("\n");
 }
@@ -69,8 +73,8 @@ function showManualUsdtCheckout() {
     <label>Transaction ID / TXID after payment
       <input id="txid" placeholder="Paste TXID after sending USDT">
     </label>
-    <button id="copyOrder" type="button" class="primary">Copy payment details</button>
-    <p class="note">The order stays pending until the USDT transfer is checked. Keep the Order ID and TXID.</p>
+    <button id="copyOrder" type="button" class="primary">Copy payment confirmation</button>
+    <p class="note">After sending USDT, paste the TXID, copy the payment confirmation, and send it to M10 support. The order stays pending until the transfer is checked.</p>
   `;
 
   $("#copyWallet").onclick = () => copyText(WALLET_ADDRESS, $("#copyWallet"));
@@ -96,9 +100,10 @@ plans.forEach((button) => {
 
 $("#continue").onclick = () => {
   const product = $("#product").value.trim();
+  const contact = $("#contact").value.trim();
   const brief = $("#brief").value.trim();
-  if (!product || !brief) {
-    alert("Please add your product name and a short description.");
+  if (!product || !contact || !brief) {
+    alert("Please add your product name, contact, and a short description.");
     return;
   }
   payment.classList.remove("hidden");
