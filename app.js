@@ -14,6 +14,8 @@ function ensureUsdtOnlyPayment() {
   });
   const paymentTitle = payment?.querySelector('h3');
   if (paymentTitle) paymentTitle.textContent = 'Pay with USDT TRC20';
+  const paymentNote = payment?.querySelector('.note');
+  if (paymentNote) paymentNote.textContent = 'Pay only with USDT on Tron (TRC20). After payment, paste the TXID to verify the transfer and unlock the AI ad. No verified TXID, no full ad.';
 }
 
 function ensureContactField() {
@@ -81,8 +83,8 @@ function orderDetailsText(txid = "") {
   return ["M10 USDT PAYMENT CONFIRMATION",`Order ID: ${state.orderId}`,`Plan: ${state.plan}`,`Amount: ${state.price.toFixed(2)} USDT`,`Network: ${NETWORK}`,`Wallet: ${WALLET_ADDRESS}`,`Customer contact: ${payload.contact}`,`Product: ${payload.product_name}`,`Photo link: ${payload.photo_url || "not provided"}`,`Language: ${payload.language}`,`Brief: ${payload.brief}`,txid ? `TXID: ${txid}` : "TXID: add after transfer",state.adUnlocked ? "" : "Generated ad: locked until payment TXID is verified",state.adUnlocked ? "Generated ad:" : "",state.adUnlocked ? state.ad : ""].join("\n");
 }
 
-function notificationText() { if (state.notified) return "Order notification sent to M10 Telegram."; return "Order generated. Paste and verify TXID after payment to unlock the AI ad."; }
-function renderAdSection() { const locked = !state.adUnlocked; return `<div class="generated-ad ${locked ? "locked" : ""}"><p class="eyebrow">AI AD OUTPUT</p>${state.verificationMessage ? `<p class="note">${state.verificationMessage}</p>` : ""}${locked ? `<p class="note">AI ad is ready. It unlocks only after a verified USDT TRC20 TXID.</p>` : `<pre id="adOutput"></pre><button id="copyAd" type="button">Copy AI ad</button>`}</div>`; }
+function notificationText() { if (state.notified) return "Order notification sent to M10 Telegram."; return "Order created. Send USDT TRC20, then paste and verify the TXID to unlock the AI ad."; }
+function renderAdSection() { const locked = !state.adUnlocked; return `<div class="generated-ad ${locked ? "locked" : ""}"><p class="eyebrow">AI AD OUTPUT</p>${state.verificationMessage ? `<p class="note">${state.verificationMessage}</p>` : ""}${locked ? `<p class="note">Your AI ad is prepared but locked. It opens only after a verified USDT TRC20 TXID.</p>` : `<pre id="adOutput"></pre><button id="copyAd" type="button">Copy AI ad</button>`}</div>`; }
 
 function bindAdActions() {
   const unlock = $("#unlockAd");
@@ -95,7 +97,7 @@ function renderManualUsdtCheckout() {
   let panel = $("#manualPayment"); const txidValue = $("#txid")?.value.trim() || "";
   if (!panel) { panel = document.createElement("div"); panel.id = "manualPayment"; payment.appendChild(panel); }
   panel.className = "manual-pay";
-  panel.innerHTML = `<p class="eyebrow">USDT TELEGRAM WALLET</p><h3>Send ${state.price.toFixed(2)} USDT</h3><p class="danger">Send only USDT on Tron (TRC20). Any other network may cause permanent loss.</p><div class="payment-grid"><span>Order ID</span><strong>${state.orderId}</strong><span>Network</span><strong>${NETWORK}</strong><span>Amount</span><strong>${state.price.toFixed(2)} USDT</strong></div><p class="note">${notificationText()}</p><label>Telegram Wallet address<div class="copy-row"><input id="walletAddress" readonly value="${WALLET_ADDRESS}"><button id="copyWallet" type="button">Copy</button></div></label><a class="secondary" href="https://t.me/wallet" target="_blank" rel="noopener">Open Telegram Wallet</a><label>Transaction ID / TXID after payment<input id="txid" placeholder="Paste TXID after sending USDT" value="${txidValue}"></label><button id="unlockAd" type="button" class="primary">Verify payment and unlock AI ad</button><button id="copyOrder" type="button" class="secondary">Copy payment confirmation</button><a id="telegramSupport" class="secondary" href="${TELEGRAM_SUPPORT}" target="_blank" rel="noopener">Send confirmation on Telegram</a>${renderAdSection()}<p class="note">No verified payment, no full ad. Automatic blockchain verification is now connected on the server.</p>`;
+  panel.innerHTML = `<p class="eyebrow">USDT TELEGRAM WALLET</p><h3>1. Send ${state.price.toFixed(2)} USDT</h3><p class="danger">Send only USDT on Tron (TRC20) to the wallet below. Any other network may cause permanent loss.</p><div class="payment-grid"><span>Order ID</span><strong>${state.orderId}</strong><span>Network</span><strong>${NETWORK}</strong><span>Amount</span><strong>${state.price.toFixed(2)} USDT</strong></div><p class="note">${notificationText()}</p><label>Telegram Wallet address<div class="copy-row"><input id="walletAddress" readonly value="${WALLET_ADDRESS}"><button id="copyWallet" type="button">Copy</button></div></label><a class="secondary" href="https://t.me/wallet" target="_blank" rel="noopener">Open Telegram Wallet</a><label>2. Paste Transaction ID / TXID after payment<input id="txid" placeholder="Paste TXID after sending USDT" value="${txidValue}"></label><button id="unlockAd" type="button" class="primary">3. Verify TXID and unlock AI ad</button><button id="copyOrder" type="button" class="secondary">Copy payment confirmation</button><a id="telegramSupport" class="secondary" href="${TELEGRAM_SUPPORT}" target="_blank" rel="noopener">Send confirmation on Telegram</a>${renderAdSection()}<p class="note">No verified payment, no full ad. The AI ad stays locked until the TXID is confirmed.</p>`;
   $("#copyWallet").onclick = () => copyText(WALLET_ADDRESS, $("#copyWallet"));
   $("#copyOrder").onclick = () => { const txid = $("#txid").value.trim(); copyText(orderDetailsText(txid), $("#copyOrder")); };
   bindAdActions(); panel.scrollIntoView({ behavior: "smooth" });
