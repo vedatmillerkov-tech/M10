@@ -6,6 +6,19 @@ const $ = (selector) => document.querySelector(selector);
 const plans = document.querySelectorAll("[data-plan]");
 const payment = $("#payment");
 
+function ensureContactField() {
+  if ($("#contact")) return;
+  const languageLabel = $("#language")?.closest("label");
+  if (!languageLabel) return;
+  const label = document.createElement("label");
+  label.textContent = "Your Telegram username or email";
+  const input = document.createElement("input");
+  input.id = "contact";
+  input.placeholder = "Example: @username or email@example.com";
+  label.appendChild(input);
+  languageLabel.parentNode.insertBefore(label, languageLabel);
+}
+
 function makeOrderId() {
   const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
   const random = Math.random().toString(36).slice(2, 7).toUpperCase();
@@ -26,7 +39,7 @@ function copyText(text, button) {
 
 function orderDetailsText(txid = "") {
   const product = $("#product").value.trim();
-  const contact = $("#contact").value.trim();
+  const contact = $("#contact")?.value.trim() || "";
   const language = $("#language").value;
   const brief = $("#brief").value.trim();
   return [
@@ -90,6 +103,7 @@ plans.forEach((button) => {
     state.plan = button.dataset.plan;
     state.price = Number(button.dataset.price);
     $("#order").classList.remove("hidden");
+    ensureContactField();
     payment.classList.add("hidden");
     const manualPanel = $("#manualPayment");
     if (manualPanel) manualPanel.remove();
@@ -99,8 +113,9 @@ plans.forEach((button) => {
 });
 
 $("#continue").onclick = () => {
+  ensureContactField();
   const product = $("#product").value.trim();
-  const contact = $("#contact").value.trim();
+  const contact = $("#contact")?.value.trim() || "";
   const brief = $("#brief").value.trim();
   if (!product || !contact || !brief) {
     alert("Please add your product name, contact, and a short description.");
