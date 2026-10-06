@@ -1,5 +1,6 @@
 const WALLET_ADDRESS = "TP4DPLKPQnN4HgHHWeo9n2mCUvJR7uZwPZ";
 const NETWORK = "Tron (TRC20)";
+const TELEGRAM_SUPPORT = "https://t.me/vdtmlrkv";
 const state = { plan: null, price: 0, orderId: null };
 
 const $ = (selector) => document.querySelector(selector);
@@ -87,8 +88,8 @@ function showManualUsdtCheckout() {
       <input id="txid" placeholder="Paste TXID after sending USDT">
     </label>
     <button id="copyOrder" type="button" class="primary">Copy payment confirmation</button>
-    <button id="whatsappSoon" type="button" class="secondary disabled-soon">WhatsApp Support — Coming Soon</button>
-    <p class="note">After sending USDT, paste the TXID, copy the payment confirmation, and send it to M10 support. WhatsApp direct sending is coming soon.</p>
+    <a id="telegramSupport" class="secondary" href="${TELEGRAM_SUPPORT}" target="_blank" rel="noopener">Send confirmation on Telegram</a>
+    <p class="note">After sending USDT, paste the TXID, copy the payment confirmation, then tap Telegram Support and send the copied message. The order stays pending until the transfer is checked.</p>
   `;
 
   $("#copyWallet").onclick = () => copyText(WALLET_ADDRESS, $("#copyWallet"));
@@ -96,7 +97,6 @@ function showManualUsdtCheckout() {
     const txid = $("#txid").value.trim();
     copyText(orderDetailsText(txid), $("#copyOrder"));
   };
-  $("#whatsappSoon").onclick = () => alert("WhatsApp Support is coming soon. For now, copy the payment confirmation and send it to M10 support.");
   panel.scrollIntoView({ behavior: "smooth" });
 }
 
