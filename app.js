@@ -87,7 +87,8 @@ function showManualUsdtCheckout() {
       <input id="txid" placeholder="Paste TXID after sending USDT">
     </label>
     <button id="copyOrder" type="button" class="primary">Copy payment confirmation</button>
-    <p class="note">After sending USDT, paste the TXID, copy the payment confirmation, and send it to M10 support. The order stays pending until the transfer is checked.</p>
+    <button id="whatsappSoon" type="button" class="secondary disabled-soon">WhatsApp Support — Coming Soon</button>
+    <p class="note">After sending USDT, paste the TXID, copy the payment confirmation, and send it to M10 support. WhatsApp direct sending is coming soon.</p>
   `;
 
   $("#copyWallet").onclick = () => copyText(WALLET_ADDRESS, $("#copyWallet"));
@@ -95,6 +96,7 @@ function showManualUsdtCheckout() {
     const txid = $("#txid").value.trim();
     copyText(orderDetailsText(txid), $("#copyOrder"));
   };
+  $("#whatsappSoon").onclick = () => alert("WhatsApp Support is coming soon. For now, copy the payment confirmation and send it to M10 support.");
   panel.scrollIntoView({ behavior: "smooth" });
 }
 
