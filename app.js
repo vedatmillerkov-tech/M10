@@ -8,6 +8,14 @@ const $ = (selector) => document.querySelector(selector);
 const plans = document.querySelectorAll("[data-plan]");
 const payment = $("#payment");
 
+function ensureUsdtOnlyPayment() {
+  document.querySelectorAll('.pay').forEach((button) => {
+    if (button.dataset.method !== 'crypto') button.remove();
+  });
+  const paymentTitle = payment?.querySelector('h3');
+  if (paymentTitle) paymentTitle.textContent = 'Pay with USDT TRC20';
+}
+
 function ensureContactField() {
   if ($("#contact")) return;
   const languageLabel = $("#language")?.closest("label");
@@ -100,6 +108,7 @@ async function showManualUsdtCheckout(button) {
   finally { button.disabled = false; button.textContent = "₮ Pay with USDT"; renderManualUsdtCheckout(); }
 }
 
-plans.forEach((button) => { button.onclick = () => { state.plan = button.dataset.plan; state.price = Number(button.dataset.price); $("#order").classList.remove("hidden"); ensureContactField(); ensurePhotoField(); payment.classList.add("hidden"); const manualPanel = $("#manualPayment"); if (manualPanel) manualPanel.remove(); $("#orderTitle").textContent = `${state.plan} — $${state.price.toFixed(2)}`; $("#order").scrollIntoView({ behavior: "smooth" }); }; });
-$("#continue").onclick = () => { ensureContactField(); ensurePhotoField(); const payload = getOrderPayload(); if (!payload.product_name || !payload.photo_url || !payload.contact || !payload.brief) { alert("Please add your product name, photo link, contact, and a short description."); return; } payment.classList.remove("hidden"); payment.scrollIntoView({ behavior: "smooth" }); };
+ensureUsdtOnlyPayment();
+plans.forEach((button) => { button.onclick = () => { state.plan = button.dataset.plan; state.price = Number(button.dataset.price); $("#order").classList.remove("hidden"); ensureContactField(); ensurePhotoField(); ensureUsdtOnlyPayment(); payment.classList.add("hidden"); const manualPanel = $("#manualPayment"); if (manualPanel) manualPanel.remove(); $("#orderTitle").textContent = `${state.plan} — $${state.price.toFixed(2)}`; $("#order").scrollIntoView({ behavior: "smooth" }); }; });
+$("#continue").onclick = () => { ensureContactField(); ensurePhotoField(); ensureUsdtOnlyPayment(); const payload = getOrderPayload(); if (!payload.product_name || !payload.photo_url || !payload.contact || !payload.brief) { alert("Please add your product name, photo link, contact, and a short description."); return; } payment.classList.remove("hidden"); payment.scrollIntoView({ behavior: "smooth" }); };
 document.querySelectorAll(".pay").forEach((button) => { button.onclick = () => { if (button.dataset.method !== "crypto") { alert("Card payment is coming soon. No charge will be made."); return; } showManualUsdtCheckout(button); }; });
